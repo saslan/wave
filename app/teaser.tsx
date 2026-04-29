@@ -113,22 +113,31 @@ function Stage({
   persistKey?: string;
   children: ReactNode;
 }) {
-  const [time, setTime] = useState<number>(() => {
-    if (typeof window === "undefined") return 0;
-    try {
-      const v = parseFloat(localStorage.getItem(persistKey + ":t") || "0");
-      return isFinite(v) ? clamp(v, 0, duration) : 0;
-    } catch {
-      return 0;
-    }
-  });
+  // Always start at 0 on both server prerender and client hydration to avoid
+  // hydration mismatch. localStorage is read AFTER mount in a separate effect.
+  const [time, setTime] = useState<number>(0);
   const [playing, setPlaying] = useState(autoplay);
   const [scale, setScale] = useState(1);
   const stageRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
+  const hydratedRef = useRef(false);
 
+  // Restore persisted playhead AFTER mount (client only).
   useEffect(() => {
+    try {
+      const v = parseFloat(localStorage.getItem(persistKey + ":t") || "0");
+      if (isFinite(v) && v >= 0 && v <= duration) setTime(v);
+    } catch {
+      /* ignore */
+    }
+    hydratedRef.current = true;
+  }, [persistKey, duration]);
+
+  // Persist on change — but only after we've already loaded the saved value,
+  // so the first render doesn't overwrite the saved value with 0.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
     try {
       localStorage.setItem(persistKey + ":t", String(time));
     } catch {
