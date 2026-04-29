@@ -1,0 +1,40 @@
+# Feed WAVE — Hostinger Apache cache rules
+# ============================================================
+# Problem solved here: Hostinger CDN was caching index.html for 1 year
+# (s-maxage=31536000). Each new build produces fresh hashed chunk
+# filenames, but the cached HTML still pointed at the *old* chunk hashes
+# → 404 ChunkLoadError on every deploy.
+#
+# Fix:
+#   * HTML  → never cache (must revalidate every request)
+#   * Hashed chunks (/_next/static/) → cache forever (filename changes
+#     on each build, so cache-busting is automatic)
+
+<IfModule mod_headers.c>
+  # ── HTML & root entry: revalidate every request ────────────────────
+  <FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "public, max-age=0, s-maxage=0, must-revalidate"
+    Header unset Expires
+    Header set Pragma "no-cache"
+  </FilesMatch>
+
+  # ── Static hashed assets: forever (filename has content hash) ──────
+  <FilesMatch "\.(js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|webp|avif|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+# Default to index.html for "directory" requests
+DirectoryIndex index.html
+
+# Pretty URLs — let trailing-slash routes resolve to /index.html
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # If request maps to an existing file or dir, leave it alone
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  # Otherwise try /<path>/index.html (Next.js trailingSlash style)
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.*)$ $1/index.html [L]
+</IfModule>
