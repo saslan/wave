@@ -1043,8 +1043,8 @@ function CornerMark() {
     <div
       style={{
         position: "absolute",
-        left: 80,
-        top: 110,
+        left: 90,
+        top: 160,
         display: "flex",
         alignItems: "center",
         gap: 14,
@@ -1072,8 +1072,8 @@ function CornerSolana() {
     <div
       style={{
         position: "absolute",
-        right: 80,
-        top: 116,
+        right: 90,
+        top: 166,
         display: "flex",
         alignItems: "center",
         gap: 12,
